@@ -24,8 +24,10 @@ import (
 
 const dbVersion = 5
 
-const packedHeightBytes = 4
-const maxAddrDescLen = 1024
+const (
+	packedHeightBytes = 4
+	maxAddrDescLen    = 1024
+)
 
 // iterator creates snapshot, which takes lots of resources
 // when doing huge scan, it is better to close it and reopen from time to time to free the resources
@@ -122,7 +124,7 @@ var cfBaseNames = []string{"default", "height", "addresses", "blockTxs", "transa
 var cfNamesBitcoinType = []string{"addressBalance", "txAddresses"}
 var cfNamesEthereumType = []string{"addressContracts"}
 
-func openDB(path string, c *gorocksdb.Cache, openFiles int) (*gorocksdb.DB, []*gorocksdb.ColumnFamilyHandle, error) {
+func openDB(path string, c *gorocksdb.Cache, openFiles int, readOnly bool) (*gorocksdb.DB, []*gorocksdb.ColumnFamilyHandle, error) {
 	// opts with bloom filter
 	opts := createAndSetDBOptions(10, c, openFiles)
 	// opts for addresses without bloom filter
@@ -135,6 +137,14 @@ func openDB(path string, c *gorocksdb.Cache, openFiles int) (*gorocksdb.DB, []*g
 	for i := 0; i < count; i++ {
 		cfOptions = append(cfOptions, opts)
 	}
+	if readOnly {
+		db, cfh, err := gorocksdb.OpenDbForReadOnlyColumnFamilies(opts, path, cfNames, cfOptions, false)
+		if err != nil {
+			return nil, nil, err
+		}
+		return db, cfh, nil
+	}
+
 	db, cfh, err := gorocksdb.OpenDbColumnFamilies(opts, path, cfNames, cfOptions)
 	if err != nil {
 		return nil, nil, err
@@ -144,7 +154,7 @@ func openDB(path string, c *gorocksdb.Cache, openFiles int) (*gorocksdb.DB, []*g
 
 // NewRocksDB opens an internal handle to RocksDB environment.  Close
 // needs to be called to release it.
-func NewRocksDB(path string, cacheSize, maxOpenFiles int, parser bchain.BlockChainParser, metrics *common.Metrics) (d *RocksDB, err error) {
+func NewRocksDB(path string, cacheSize, maxOpenFiles int, readOnly bool, parser bchain.BlockChainParser, metrics *common.Metrics) (d *RocksDB, err error) {
 	glog.Infof("rocksdb: opening %s, required data version %v, cache size %v, max open files %v", path, dbVersion, cacheSize, maxOpenFiles)
 
 	cfNames = append([]string{}, cfBaseNames...)
@@ -158,7 +168,7 @@ func NewRocksDB(path string, cacheSize, maxOpenFiles int, parser bchain.BlockCha
 	}
 
 	c := gorocksdb.NewLRUCache(uint64(cacheSize))
-	db, cfh, err := openDB(path, c, maxOpenFiles)
+	db, cfh, err := openDB(path, c, maxOpenFiles, readOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -294,13 +304,13 @@ func (d *RocksDB) Close() error {
 
 // Reopen reopens the database
 // It closes and reopens db, nobody can access the database during the operation!
-func (d *RocksDB) Reopen() error {
+func (d *RocksDB) Reopen(readOnly bool) error {
 	err := d.closeDB()
 	if err != nil {
 		return err
 	}
 	d.db = nil
-	db, cfh, err := openDB(d.path, d.cache, d.maxOpenFiles)
+	db, cfh, err := openDB(d.path, d.cache, d.maxOpenFiles, readOnly)
 	if err != nil {
 		return err
 	}
@@ -1362,7 +1372,8 @@ func (d *RocksDB) writeHeight(wb *gorocksdb.WriteBatch, height uint32, bi *Block
 
 func (d *RocksDB) disconnectTxAddressesInputs(wb *gorocksdb.WriteBatch, btxID []byte, inputs []outpoint, txa *TxAddresses, txAddressesToUpdate map[string]*TxAddresses,
 	getAddressBalance func(addrDesc bchain.AddressDescriptor) (*AddrBalance, error),
-	addressFoundInTx func(addrDesc bchain.AddressDescriptor, btxID []byte) bool) error {
+	addressFoundInTx func(addrDesc bchain.AddressDescriptor, btxID []byte) bool,
+) error {
 	var err error
 	var balance *AddrBalance
 	for i, t := range txa.Inputs {
@@ -1418,7 +1429,8 @@ func (d *RocksDB) disconnectTxAddressesInputs(wb *gorocksdb.WriteBatch, btxID []
 
 func (d *RocksDB) disconnectTxAddressesOutputs(wb *gorocksdb.WriteBatch, btxID []byte, txa *TxAddresses,
 	getAddressBalance func(addrDesc bchain.AddressDescriptor) (*AddrBalance, error),
-	addressFoundInTx func(addrDesc bchain.AddressDescriptor, btxID []byte) bool) error {
+	addressFoundInTx func(addrDesc bchain.AddressDescriptor, btxID []byte) bool,
+) error {
 	for i, t := range txa.Outputs {
 		if len(t.AddrDesc) > 0 {
 			exist := addressFoundInTx(t.AddrDesc, btxID)
@@ -1579,8 +1591,8 @@ func (d *RocksDB) storeBalancesDisconnect(wb *gorocksdb.WriteBatch, balances map
 		}
 	}
 	d.storeBalances(wb, balances)
-
 }
+
 func dirSize(path string) (int64, error) {
 	var size int64
 	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
@@ -1866,7 +1878,6 @@ func reorderUtxo(utxos []Utxo, index int) {
 	sort.SliceStable(toSort, func(i, j int) bool {
 		return toSort[i].Vout < toSort[j].Vout
 	})
-
 }
 
 func (d *RocksDB) fixUtxo(addrDesc bchain.AddressDescriptor, ba *AddrBalance) (bool, bool, error) {

@@ -47,6 +47,7 @@ var (
 	dbPath         = flag.String("datadir", "./data", "path to database directory")
 	dbCache        = flag.Int("dbcache", 1<<29, "size of the rocksdb cache")
 	dbMaxOpenFiles = flag.Int("dbmaxopenfiles", 1<<14, "max open files by rocksdb")
+	dbReadOnly     = flag.Bool("dbreadonly", false, "read only mod")
 
 	blockFrom      = flag.Int("blockheight", -1, "height of the starting block")
 	blockUntil     = flag.Int("blockuntil", -1, "height of the final block")
@@ -175,7 +176,7 @@ func mainWithExitCode() int {
 		return exitCodeFatal
 	}
 
-	index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, chain.GetChainParser(), metrics)
+	index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, *dbReadOnly, chain.GetChainParser(), metrics)
 	if err != nil {
 		glog.Error("rocksDB: ", err)
 		return exitCodeFatal
@@ -468,7 +469,8 @@ func blockbookAppInfoMetric(db *db.RocksDB, chain bchain.BlockChain, txCache *db
 		"blockbook_buildtime":      si.Blockbook.BuildTime,
 		"backend_version":          si.Backend.Version,
 		"backend_subversion":       si.Backend.Subversion,
-		"backend_protocol_version": si.Backend.ProtocolVersion}).Set(float64(0))
+		"backend_protocol_version": si.Backend.ProtocolVersion,
+	}).Set(float64(0))
 	metrics.BackendBestHeight.Set(float64(si.Backend.Blocks))
 	metrics.BlockbookBestHeight.Set(float64(si.Blockbook.BestHeight))
 	return nil
@@ -580,7 +582,6 @@ func syncMempoolLoop() {
 			glog.Error("syncMempoolLoop ", errors.ErrorStack(err))
 		} else {
 			internalState.FinishedMempoolSync(count)
-
 		}
 	})
 	glog.Info("syncMempoolLoop stopped")
