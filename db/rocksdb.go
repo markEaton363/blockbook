@@ -124,7 +124,7 @@ var cfBaseNames = []string{"default", "height", "addresses", "blockTxs", "transa
 var cfNamesBitcoinType = []string{"addressBalance", "txAddresses"}
 var cfNamesEthereumType = []string{"addressContracts"}
 
-func openDB(path string, c *gorocksdb.Cache, openFiles int, readOnly bool) (*gorocksdb.DB, []*gorocksdb.ColumnFamilyHandle, error) {
+func openDB(path string, c *gorocksdb.Cache, openFiles int) (*gorocksdb.DB, []*gorocksdb.ColumnFamilyHandle, error) {
 	// opts with bloom filter
 	opts := createAndSetDBOptions(10, c, openFiles)
 	// opts for addresses without bloom filter
@@ -137,13 +137,6 @@ func openDB(path string, c *gorocksdb.Cache, openFiles int, readOnly bool) (*gor
 	for i := 0; i < count; i++ {
 		cfOptions = append(cfOptions, opts)
 	}
-	if readOnly {
-		db, cfh, err := gorocksdb.OpenDbForReadOnlyColumnFamilies(opts, path, cfNames, cfOptions, false)
-		if err != nil {
-			return nil, nil, err
-		}
-		return db, cfh, nil
-	}
 
 	db, cfh, err := gorocksdb.OpenDbColumnFamilies(opts, path, cfNames, cfOptions)
 	if err != nil {
@@ -154,7 +147,7 @@ func openDB(path string, c *gorocksdb.Cache, openFiles int, readOnly bool) (*gor
 
 // NewRocksDB opens an internal handle to RocksDB environment.  Close
 // needs to be called to release it.
-func NewRocksDB(path string, cacheSize, maxOpenFiles int, readOnly bool, parser bchain.BlockChainParser, metrics *common.Metrics) (d *RocksDB, err error) {
+func NewRocksDB(path string, cacheSize, maxOpenFiles int, parser bchain.BlockChainParser, metrics *common.Metrics) (d *RocksDB, err error) {
 	glog.Infof("rocksdb: opening %s, required data version %v, cache size %v, max open files %v", path, dbVersion, cacheSize, maxOpenFiles)
 
 	cfNames = append([]string{}, cfBaseNames...)
@@ -168,7 +161,7 @@ func NewRocksDB(path string, cacheSize, maxOpenFiles int, readOnly bool, parser 
 	}
 
 	c := gorocksdb.NewLRUCache(uint64(cacheSize))
-	db, cfh, err := openDB(path, c, maxOpenFiles, readOnly)
+	db, cfh, err := openDB(path, c, maxOpenFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -304,13 +297,13 @@ func (d *RocksDB) Close() error {
 
 // Reopen reopens the database
 // It closes and reopens db, nobody can access the database during the operation!
-func (d *RocksDB) Reopen(readOnly bool) error {
+func (d *RocksDB) Reopen() error {
 	err := d.closeDB()
 	if err != nil {
 		return err
 	}
 	d.db = nil
-	db, cfh, err := openDB(d.path, d.cache, d.maxOpenFiles, readOnly)
+	db, cfh, err := openDB(d.path, d.cache, d.maxOpenFiles)
 	if err != nil {
 		return err
 	}

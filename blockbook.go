@@ -139,15 +139,20 @@ func mainWithExitCode() int {
 	glog.Infof("Blockbook: %+v, debug mode %v", common.GetVersionInfo(), *debugMode)
 
 	if *dbReadOnly {
-
 		if *blockchain == "" {
 			glog.Error("Missing blockchaincfg configuration parameter")
 			return exitCodeFatal
 		}
 
-		coin, _, _, err := coins.GetCoinNameFromConfig(*blockchain)
+		coin, coinShortcut, coinLabel, err := coins.GetCoinNameFromConfig(*blockchain)
 		if err != nil {
 			glog.Error("config: ", err)
+			return exitCodeFatal
+		}
+
+		internalState, err = newInternalState(coin, coinShortcut, coinLabel, index)
+		if err != nil {
+			glog.Error("internalState: ", err)
 			return exitCodeFatal
 		}
 
@@ -162,7 +167,7 @@ func mainWithExitCode() int {
 			return exitCodeFatal
 		}
 
-		index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, *dbReadOnly, chain.GetChainParser(), metrics)
+		index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, chain.GetChainParser(), metrics)
 		if err != nil {
 			glog.Error("rocksDB: ", err)
 			return exitCodeFatal
@@ -242,7 +247,7 @@ func mainWithExitCode() int {
 			return exitCodeFatal
 		}
 
-		index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, *dbReadOnly, chain.GetChainParser(), metrics)
+		index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, chain.GetChainParser(), metrics)
 		if err != nil {
 			glog.Error("rocksDB: ", err)
 			return exitCodeFatal
@@ -475,7 +480,10 @@ func startInternalServer() (*server.InternalServer, error) {
 
 func startPublicServer() (*server.PublicServer, error) {
 	// start public server in limited functionality, extend it after sync is finished by calling ConnectFullPublicInterface
-	publicServer, err := server.NewPublicServer(*publicBinding, *certFiles, index, chain, mempool, txCache, *explorerURL, metrics, internalState, *debugMode, *enableSubNewTx)
+	publicServer, err := server.NewPublicServer(
+		*publicBinding, *certFiles, index, chain,
+		mempool, txCache, *explorerURL, metrics,
+		internalState, *debugMode, *enableSubNewTx)
 	if err != nil {
 		return nil, err
 	}
