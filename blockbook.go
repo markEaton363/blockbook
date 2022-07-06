@@ -138,10 +138,29 @@ func mainWithExitCode() int {
 
 	glog.Infof("Blockbook: %+v, debug mode %v", common.GetVersionInfo(), *debugMode)
 
-	log.Println(*dbReadOnly)
 	if *dbReadOnly {
-		var err error
-		var publicServer *server.PublicServer
+
+		if *blockchain == "" {
+			glog.Error("Missing blockchaincfg configuration parameter")
+			return exitCodeFatal
+		}
+
+		coin, _, _, err := coins.GetCoinNameFromConfig(*blockchain)
+		if err != nil {
+			glog.Error("config: ", err)
+			return exitCodeFatal
+		}
+
+		metrics, err = common.GetMetrics(coin)
+		if err != nil {
+			glog.Error("metrics: ", err)
+			return exitCodeFatal
+		}
+
+		if chain, mempool, err = getBlockChainWithRetry(coin, *blockchain, pushSynchronizationHandler, metrics, 120); err != nil {
+			glog.Error("rpc: ", err)
+			return exitCodeFatal
+		}
 
 		index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, *dbReadOnly, chain.GetChainParser(), metrics)
 		if err != nil {
@@ -150,7 +169,17 @@ func mainWithExitCode() int {
 		}
 
 		defer index.Close()
-		
+
+		var internalServer *server.InternalServer
+		if *internalBinding != "" {
+			internalServer, err = startInternalServer()
+			if err != nil {
+				glog.Error("internal server: ", err)
+				return exitCodeFatal
+			}
+		}
+
+		var publicServer *server.PublicServer
 		if *publicBinding != "" {
 			publicServer, err = startPublicServer()
 			if err != nil {
@@ -168,6 +197,11 @@ func mainWithExitCode() int {
 			publicServer.ConnectFullPublicInterface()
 		}
 
+		if internalServer != nil || publicServer != nil || chain != nil {
+			// start fiat rates downloader only if not shutting down immediately
+			initFiatRatesDownloader(index, *blockchain)
+			waitForSignalAndShutdown(internalServer, publicServer, chain, 10*time.Second)
+		}
 		return exitCodeOK
 	} else {
 		if *prof != "" {
