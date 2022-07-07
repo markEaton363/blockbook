@@ -175,6 +175,72 @@ func mainWithExitCode() int {
 			return exitCodeFatal
 		}
 
+		// fix possible inconsistencies in the UTXO index
+		if *fixUtxo || !internalState.UtxoChecked {
+			err = index.FixUtxos(chanOsSignal)
+			if err != nil {
+				glog.Error("fixUtxos: ", err)
+				return exitCodeFatal
+			}
+			internalState.UtxoChecked = true
+		}
+		index.SetInternalState(internalState)
+		if *fixUtxo {
+			err = index.StoreInternalState(internalState)
+			if err != nil {
+				glog.Error("StoreInternalState: ", err)
+				return exitCodeFatal
+			}
+			return exitCodeOK
+		}
+
+		if internalState.DbState != common.DbStateClosed {
+			if internalState.DbState == common.DbStateInconsistent {
+				glog.Error("internalState: database is in inconsistent state and cannot be used")
+				return exitCodeFatal
+			}
+			glog.Warning("internalState: database was left in open state, possibly previous ungraceful shutdown")
+		}
+
+		if *computeFeeStatsFlag {
+			internalState.DbState = common.DbStateOpen
+			err = computeFeeStats(chanOsSignal, *blockFrom, *blockUntil, index, chain, txCache, internalState, metrics)
+			if err != nil && err != db.ErrOperationInterrupted {
+				glog.Error("computeFeeStats: ", err)
+				return exitCodeFatal
+			}
+			return exitCodeOK
+		}
+
+		if *computeColumnStats {
+			internalState.DbState = common.DbStateOpen
+			err = index.ComputeInternalStateColumnStats(chanOsSignal)
+			if err != nil {
+				glog.Error("internalState: ", err)
+				return exitCodeFatal
+			}
+			glog.Info("DB size on disk: ", index.DatabaseSizeOnDisk(), ", DB size as computed: ", internalState.DBSizeTotal())
+			return exitCodeOK
+		}
+
+		// set the DbState to open at this moment, after all important workers are initialized
+		internalState.DbState = common.DbStateOpen
+		err = index.StoreInternalState(internalState)
+		if err != nil {
+			glog.Error("internalState: ", err)
+			return exitCodeFatal
+		}
+
+		if txCache, err = db.NewTxCache(index, chain, metrics, internalState, !*noTxCache); err != nil {
+			glog.Error("txCache ", err)
+			return exitCodeFatal
+		}
+
+		// report BlockbookAppInfo metric, only log possible error
+		if err = blockbookAppInfoMetric(index, chain, txCache, internalState, metrics); err != nil {
+			glog.Error("blockbookAppInfoMetric ", err)
+		}
+
 		var internalServer *server.InternalServer
 		if *internalBinding != "" {
 			internalServer, err = startInternalServer()
