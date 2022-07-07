@@ -150,12 +150,6 @@ func mainWithExitCode() int {
 			return exitCodeFatal
 		}
 
-		internalState, err = newInternalState(coin, coinShortcut, coinLabel, index)
-		if err != nil {
-			glog.Error("internalState: ", err)
-			return exitCodeFatal
-		}
-
 		metrics, err = common.GetMetrics(coin)
 		if err != nil {
 			glog.Error("metrics: ", err)
@@ -174,6 +168,12 @@ func mainWithExitCode() int {
 		}
 
 		defer index.Close()
+
+		internalState, err = newInternalState(coin, coinShortcut, coinLabel, index)
+		if err != nil {
+			glog.Error("internalState: ", err)
+			return exitCodeFatal
+		}
 
 		var internalServer *server.InternalServer
 		if *internalBinding != "" {
