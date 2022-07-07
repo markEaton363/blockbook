@@ -223,6 +223,12 @@ func mainWithExitCode() int {
 			return exitCodeOK
 		}
 
+		syncWorker, err = db.NewSyncWorker(index, chain, *syncWorkers, *syncChunk, *blockFrom, *dryRun, chanOsSignal, metrics, internalState)
+		if err != nil {
+			glog.Errorf("NewSyncWorker %v", err)
+			return exitCodeFatal
+		}
+
 		// set the DbState to open at this moment, after all important workers are initialized
 		internalState.DbState = common.DbStateOpen
 		err = index.StoreInternalState(internalState)
@@ -318,6 +324,7 @@ func mainWithExitCode() int {
 			glog.Error("rocksDB: ", err)
 			return exitCodeFatal
 		}
+
 		defer index.Close()
 
 		internalState, err = newInternalState(coin, coinShortcut, coinLabel, index)
