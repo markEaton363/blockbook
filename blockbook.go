@@ -161,13 +161,13 @@ func mainWithExitCode() int {
 			return exitCodeFatal
 		}
 
-		index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, chain.GetChainParser(), metrics)
+		index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, *dbReadOnly, chain.GetChainParser(), metrics)
 		if err != nil {
 			glog.Error("rocksDB: ", err)
 			return exitCodeFatal
 		}
 
-		defer index.Close()
+		defer index.Close(*dbReadOnly)
 
 		internalState, err = newInternalState(coin, coinShortcut, coinLabel, index)
 		if err != nil {
@@ -229,13 +229,13 @@ func mainWithExitCode() int {
 			return exitCodeFatal
 		}
 
-		// set the DbState to open at this moment, after all important workers are initialized
-		internalState.DbState = common.DbStateOpen
-		err = index.StoreInternalState(internalState)
-		if err != nil {
-			glog.Error("internalState: ", err)
-			return exitCodeFatal
-		}
+		// // set the DbState to open at this moment, after all important workers are initialized
+		// internalState.DbState = common.DbStateOpen
+		// err = index.StoreInternalState(internalState)
+		// if err != nil {
+		// 	glog.Error("internalState: ", err)
+		// 	return exitCodeFatal
+		// }
 
 		if txCache, err = db.NewTxCache(index, chain, metrics, internalState, !*noTxCache); err != nil {
 			glog.Error("txCache ", err)
@@ -319,13 +319,13 @@ func mainWithExitCode() int {
 			return exitCodeFatal
 		}
 
-		index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, chain.GetChainParser(), metrics)
+		index, err = db.NewRocksDB(*dbPath, *dbCache, *dbMaxOpenFiles, *dbReadOnly, chain.GetChainParser(), metrics)
 		if err != nil {
 			glog.Error("rocksDB: ", err)
 			return exitCodeFatal
 		}
 
-		defer index.Close()
+		defer index.Close(*dbReadOnly)
 
 		internalState, err = newInternalState(coin, coinShortcut, coinLabel, index)
 		if err != nil {
