@@ -229,13 +229,13 @@ func mainWithExitCode() int {
 			return exitCodeFatal
 		}
 
-		// set the DbState to open at this moment, after all important workers are initialized
-		internalState.DbState = common.DbStateOpen
-		err = index.StoreInternalState(internalState)
-		if err != nil {
-			glog.Error("internalState: ", err)
-			return exitCodeFatal
-		}
+		// // set the DbState to open at this moment, after all important workers are initialized
+		// internalState.DbState = common.DbStateOpen
+		// err = index.StoreInternalState(internalState)
+		// if err != nil {
+		// 	glog.Error("internalState: ", err)
+		// 	return exitCodeFatal
+		// }
 
 		if txCache, err = db.NewTxCache(index, chain, metrics, internalState, !*noTxCache); err != nil {
 			glog.Error("txCache ", err)
@@ -265,8 +265,8 @@ func mainWithExitCode() int {
 			}
 		}
 		
-		internalState.SyncMode = true
-		
+		// internalState.SyncMode = true
+
 		if publicServer != nil {
 			// start full public interface
 			callbacksOnNewBlock = append(callbacksOnNewBlock, publicServer.OnNewBlock)
