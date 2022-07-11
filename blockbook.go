@@ -115,6 +115,7 @@ func init() {
 }
 
 func main() {
+	log.Println("ALL RIGHT")
 	defer func() {
 		if e := recover(); e != nil {
 			glog.Error("main recovered from panic: ", e)
