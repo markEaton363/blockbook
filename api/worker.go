@@ -509,6 +509,7 @@ func (t *Tx) getAddrVoutValue(addrDesc bchain.AddressDescriptor) *big.Int {
 	}
 	return &val
 }
+
 func (t *Tx) getAddrEthereumTypeMempoolInputValue(addrDesc bchain.AddressDescriptor) *big.Int {
 	var val big.Int
 	if len(t.Vin) > 0 && len(t.Vout) > 0 && bytes.Equal(t.Vin[0].AddrDesc, addrDesc) {
@@ -1789,6 +1790,7 @@ func (w *Worker) GetSystemInfo(internal bool) (*SystemInfo, error) {
 	start := time.Now()
 	vi := common.GetVersionInfo()
 	inSync, bestHeight, lastBlockTime := w.is.GetSyncState()
+	bestHeight, _, _ = w.db.GetBestBlock()
 	inSyncMempool, lastMempoolTime, mempoolSize := w.is.GetMempoolSyncState()
 	ci, err := w.chain.GetChainInfo()
 	var backendError string
@@ -1877,8 +1879,10 @@ type bitcoinTypeEstimatedFee struct {
 
 const bitcoinTypeEstimatedFeeCacheSize = 300
 
-var bitcoinTypeEstimatedFeeCache [bitcoinTypeEstimatedFeeCacheSize]bitcoinTypeEstimatedFee
-var bitcoinTypeEstimatedFeeConservativeCache [bitcoinTypeEstimatedFeeCacheSize]bitcoinTypeEstimatedFee
+var (
+	bitcoinTypeEstimatedFeeCache             [bitcoinTypeEstimatedFeeCacheSize]bitcoinTypeEstimatedFee
+	bitcoinTypeEstimatedFeeConservativeCache [bitcoinTypeEstimatedFeeCacheSize]bitcoinTypeEstimatedFee
+)
 
 func (w *Worker) cachedBitcoinTypeEstimateFee(blocks int, conservative bool, s *bitcoinTypeEstimatedFee) (big.Int, error) {
 	s.lock.Lock()
