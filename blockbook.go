@@ -318,7 +318,10 @@ func mainWithExitCode() int {
 		go syncMempoolLoop()
 		internalState.InitialSync = false
 	}
-	go storeInternalStateLoop()
+
+	if !*dbReadOnly {
+		go storeInternalStateLoop()
+	}
 
 	if publicServer != nil {
 		// start full public interface
