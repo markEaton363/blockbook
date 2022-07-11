@@ -115,7 +115,6 @@ func init() {
 }
 
 func main() {
-	log.Println("ALL RIGHT")
 	defer func() {
 		if e := recover(); e != nil {
 			glog.Error("main recovered from panic: ", e)
@@ -137,7 +136,6 @@ func mainWithExitCode() int {
 	chanOsSignal = make(chan os.Signal, 1)
 	signal.Notify(chanOsSignal, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
-	glog.Info("ALL RIGHT")
 	glog.Infof("Blockbook: %+v, debug mode %v", common.GetVersionInfo(), *debugMode)
 
 	if *prof != "" {

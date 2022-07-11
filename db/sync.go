@@ -80,6 +80,7 @@ func (w *SyncWorker) updateBackendInfo() {
 // ResyncIndex synchronizes index to the top of the blockchain
 // onNewBlock is called when new block is connected, but not in initial parallel sync
 func (w *SyncWorker) ResyncIndex(onNewBlock bchain.OnNewBlockFunc, initialSync bool) error {
+	log.Println("\n\n\nResyncIndex")
 	start := time.Now()
 	w.is.StartedSync()
 
@@ -95,7 +96,7 @@ func (w *SyncWorker) ResyncIndex(onNewBlock bchain.OnNewBlockFunc, initialSync b
 		w.metrics.IndexResyncDuration.Observe(float64(d) / 1e6) // in milliseconds
 		w.metrics.IndexDBSize.Set(float64(w.db.DatabaseSizeOnDisk()))
 		bh, _, err := w.db.GetBestBlock()
-		log.Println("ResyncIndex\n\n\n")
+
 		log.Println("best block", bh)
 		log.Println("err", err)
 

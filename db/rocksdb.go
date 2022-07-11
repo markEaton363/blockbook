@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -1309,10 +1308,6 @@ func (d *RocksDB) GetBestBlock() (uint32, string, error) {
 			if glog.V(1) {
 				glog.Infof("rocksdb: bestblock %d %+v", bestHeight, info)
 			}
-
-			log.Println("GetBestBlock\n\n\n")
-			log.Println("best block", bestHeight)
-			log.Println("err", err)
 
 			return bestHeight, info.Hash, err
 		}
