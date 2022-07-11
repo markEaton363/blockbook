@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
 	"os"
@@ -1791,6 +1792,8 @@ func (w *Worker) GetSystemInfo(internal bool) (*SystemInfo, error) {
 	vi := common.GetVersionInfo()
 	inSync, bestHeight, lastBlockTime := w.is.GetSyncState()
 	bestHeight, _, _ = w.db.GetBestBlock()
+	log.Println("\n\n\nHERE GetSystemInfo")
+	log.Println(bestHeight)
 	inSyncMempool, lastMempoolTime, mempoolSize := w.is.GetMempoolSyncState()
 	ci, err := w.chain.GetChainInfo()
 	var backendError string
