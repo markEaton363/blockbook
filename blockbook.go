@@ -137,6 +137,7 @@ func mainWithExitCode() int {
 	chanOsSignal = make(chan os.Signal, 1)
 	signal.Notify(chanOsSignal, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
+	glog.Info("ALL RIGHT")
 	glog.Infof("Blockbook: %+v, debug mode %v", common.GetVersionInfo(), *debugMode)
 
 	if *prof != "" {
