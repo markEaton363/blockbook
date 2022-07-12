@@ -1791,7 +1791,7 @@ func (w *Worker) GetSystemInfo(internal bool) (*SystemInfo, error) {
 	start := time.Now()
 	vi := common.GetVersionInfo()
 	inSync, bestHeight, lastBlockTime := w.is.GetSyncState()
-	bestHeight, _ = w.chain.GetBestBlockHeight()
+	bestHeight, _, _ = w.db.GetBestBlock()
 	log.Println("\n\n\nHERE GetSystemInfo")
 	log.Println(bestHeight)
 	inSyncMempool, lastMempoolTime, mempoolSize := w.is.GetMempoolSyncState()

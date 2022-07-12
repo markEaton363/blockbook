@@ -175,6 +175,8 @@ func NewRocksDB(path string, cacheSize, maxOpenFiles int, readonly bool, parser 
 	}
 	wo := gorocksdb.NewDefaultWriteOptions()
 	ro := gorocksdb.NewDefaultReadOptions()
+
+	glog.Info("connect to rocksDB. path:", path)
 	return &RocksDB{path, db, wo, ro, cfh, parser, nil, metrics, c, maxOpenFiles, connectBlockStats{}}, nil
 }
 

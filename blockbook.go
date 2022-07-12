@@ -352,7 +352,10 @@ func mainWithExitCode() int {
 
 	if internalServer != nil || publicServer != nil || chain != nil {
 		// start fiat rates downloader only if not shutting down immediately
-		initFiatRatesDownloader(index, *blockchain)
+		if !*dbReadOnly {
+			initFiatRatesDownloader(index, *blockchain)
+		}
+
 		waitForSignalAndShutdown(internalServer, publicServer, chain, 10*time.Second)
 	}
 
